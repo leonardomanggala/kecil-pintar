@@ -7,7 +7,7 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Inter & Fredoka for playful touch -->
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
@@ -83,6 +83,15 @@
 
         h1, h2, h3, h4, .font-display {
             font-family: 'Fredoka', sans-serif;
+        }
+
+        /* Keep display text playful while softening the heaviest Tailwind weights. */
+        .font-display.font-bold,
+        h1, h2, h3, h4 {
+            font-weight: 600 !important;
+        }
+        .font-display.font-semibold {
+            font-weight: 500 !important;
         }
 
         /* Custom smooth transitions */
