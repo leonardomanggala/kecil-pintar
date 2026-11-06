@@ -79,7 +79,10 @@
             font-family: 'Inter', sans-serif;
             background-color: hsl(var(--background));
             color: hsl(var(--foreground));
+            overflow-x: clip;
         }
+
+        img, video, canvas, svg { max-width: 100%; }
 
         h1, h2, h3, h4, .font-display {
             font-family: 'Fredoka', sans-serif;
@@ -154,8 +157,33 @@
 
         #reference-content img,
         #quiz-stimulus img {
+            display: block;
             max-width: 100%;
             height: auto;
+            object-fit: contain;
+        }
+
+        #reference-content figure,
+        #quiz-stimulus figure {
+            max-width: 100%;
+            margin-inline: 0;
+        }
+
+        #quiz-options button,
+        #quiz-options p,
+        #quiz-question-title,
+        #quiz-stimulus {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        #quiz-options button > span {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        #quiz-options button > i {
+            flex: 0 0 auto;
         }
 
         @media (min-width: 640px) and (max-width: 1023px) {
@@ -170,6 +198,10 @@
             #member-controls > div:nth-of-type(2) {
                 display: none;
             }
+
+            #reference-content { padding: 0.75rem; }
+            #reference-content .reference-prose { gap: 0.75rem; }
+            #view-dashboard { gap: 1rem; }
         }
     </style>
 </head>
@@ -252,19 +284,19 @@
         <!-- VIEW 1: DASHBOARD / BERANDA -->
         <div id="view-dashboard" class="hidden space-y-6">
             <!-- Welcome Banner -->
-            <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 text-white p-6 sm:p-8 shadow-xl">
+            <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 text-white p-4 sm:p-8 shadow-xl">
                 <div class="absolute -right-10 -bottom-10 w-60 h-60 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-                <img src="data/assets/hero-students-3d.png" alt="Dua siswa SD berprestasi membawa buku dan piala" class="pointer-events-none absolute right-2 bottom-0 z-0 h-32 w-36 object-contain object-bottom sm:right-3 sm:h-full sm:max-h-56 sm:w-48 md:max-h-60 md:w-56 lg:right-6 lg:max-h-72 lg:w-96">
-                <div class="relative z-10 max-w-full pb-28 sm:max-w-[68%] sm:pb-0 lg:max-w-[60%]">
+                <img src="data/assets/hero-students-3d.png" width="1536" height="1024" fetchpriority="high" decoding="async" alt="Dua siswa SD berprestasi membawa buku dan piala" class="pointer-events-none absolute right-1 bottom-0 z-0 h-44 w-52 object-contain object-bottom drop-shadow-xl max-[380px]:h-40 max-[380px]:w-48 sm:right-3 sm:h-full sm:max-h-56 sm:w-52 md:max-h-60 md:w-56 lg:right-6 lg:max-h-72 lg:w-96">
+                <div class="relative z-10 max-w-full pb-36 max-[380px]:pb-32 sm:max-w-[59%] sm:pb-0 md:max-w-[62%] lg:max-w-[56%]">
                     <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-medium mb-3">
                         <i data-lucide="star" class="w-3.5 h-3.5 fill-amber-300 text-amber-300"></i>
                         <span>Materi TKA SD 2027</span>
                     </div>
-                    <h1 id="welcome-title" class="text-2xl sm:text-4xl font-display font-bold tracking-tight mb-2">Halo, Bintang Kecil! ✨</h1>
-                    <p class="text-indigo-100 text-sm sm:text-base mb-6">Belajar dan berlatih dengan kerangka asesmen, rangkuman materi, serta paket soal TKA SD 2027.</p>
+                    <h1 id="welcome-title" class="text-xl sm:text-4xl font-display font-bold tracking-tight mb-2">Halo, Bintang Kecil! ✨</h1>
+                    <p class="text-indigo-100 text-sm sm:text-base mb-4 sm:mb-6">Belajar dan berlatih dengan kerangka asesmen, rangkuman materi, serta paket soal TKA SD 2027.</p>
                     
                     <!-- Progress Level Bar -->
-                    <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                    <div class="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20">
                         <div class="flex justify-between text-xs sm:text-sm font-medium mb-1 text-indigo-100">
                             <span>Target Level Berikutnya</span>
                             <span id="xp-text">75 / 100 XP</span>
@@ -341,7 +373,7 @@
                     <button id="reference-summary-button" onclick="setReferenceKind('summary')" class="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white">Rangkuman Materi</button>
                     <button id="reference-framework-button" onclick="setReferenceKind('framework')" class="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700">Kerangka Asesmen</button>
                 </div>
-                <div id="reference-content" class="max-h-[60vh] sm:max-h-[620px] overflow-auto overscroll-contain rounded-xl bg-slate-50 border border-slate-200 p-3 sm:p-6 space-y-4 text-sm leading-7 text-slate-700"></div>
+                <div id="reference-content" class="max-h-[72vh] sm:max-h-[620px] min-w-0 overflow-auto overscroll-contain rounded-xl bg-slate-50 border border-slate-200 p-3 sm:p-6 space-y-4 text-sm leading-7 text-slate-700"></div>
             </section>
 
             <!-- Badges Section -->
@@ -350,7 +382,7 @@
                     <i data-lucide="award" class="w-5 h-5 text-amber-500"></i>
                     Koleksi Lencana (Badges)
                 </h3>
-                <div id="badges-container" class="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                <div id="badges-container" class="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <!-- Badges injected by JS -->
                 </div>
             </div>
@@ -407,7 +439,7 @@
             <div class="shadcn-card min-w-0 p-4 sm:p-8 space-y-5 sm:space-y-6">
                 <!-- Progress Indicator -->
                 <div class="space-y-2">
-                    <div class="flex justify-between text-xs font-semibold text-muted-foreground">
+                    <div class="flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs font-semibold text-muted-foreground">
                         <span id="quiz-progress-text">Soal 1 dari 5</span>
                         <span id="quiz-score-live">Ragu: 0</span>
                     </div>
@@ -430,7 +462,7 @@
                 </div>
 
                 <!-- Options List -->
-                <div id="quiz-options" class="space-y-3">
+                <div id="quiz-options" class="min-w-0 space-y-3">
                     <!-- Options injected by JS -->
                 </div>
                 <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
