@@ -141,6 +141,16 @@ function setAuthMode(mode) {
     setAuthMessage('');
 }
 
+function togglePasswordVisibility(inputId, button) {
+    const input = document.getElementById(inputId);
+    const visible = input.type === 'password';
+    input.type = visible ? 'text' : 'password';
+    button.setAttribute('aria-label', visible ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
+    button.setAttribute('aria-pressed', String(visible));
+    button.innerHTML = `<i data-lucide="${visible ? 'eye-off' : 'eye'}" class="h-5 w-5"></i>`;
+    lucide.createIcons();
+}
+
 async function handleAuthSubmit(event) {
     event.preventDefault();
     if (!supabaseClient) return setAuthMessage('Supabase belum dikonfigurasi. Hubungkan proyek Supabase dan tambahkan URL serta publishable key ke Vercel.', 'error');
