@@ -53,8 +53,8 @@ function richText(text, extraClass = '') {
         const safe = lines.map(escapeHtml).join('<br>');
         const looksLikeHeading = piece.length < 100 && !/[.!?]$/.test(piece) && !piece.includes('\n');
         return looksLikeHeading
-            ? `<h3 class="font-display text-base font-bold text-slate-800 pt-2">${safe}</h3>`
-            : `<p class="${extraClass}">${safe}</p>`;
+            ? `<h3 class="reference-heading">${safe}</h3>`
+            : `<p class="reference-paragraph ${extraClass}">${safe}</p>`;
     }).join('');
 }
 
@@ -345,7 +345,7 @@ function renderReferences() {
     const ref = appData.references.find(item => item.subject === activeReferenceSubject && item.kind === activeReferenceKind);
     const container = document.getElementById('reference-content');
     if (!ref) { container.innerHTML = '<p>Dokumen tidak ditemukan.</p>'; return; }
-    let html = `<p class="text-xs text-muted-foreground">Sumber: ${escapeHtml(ref.source)}</p>${richText(ref.content)}`;
+    let html = `<p class="reference-source">Sumber: ${escapeHtml(ref.source)}</p><div class="reference-prose">${richText(ref.content)}</div>`;
     if (activeReferenceSubject === 'ipas' && activeReferenceKind === 'framework') {
         html += `<figure class="mt-6"><img class="max-w-full rounded-xl border border-slate-200 bg-white" src="data/assets/ipas-struktur-tumbuhan.jpeg" alt="Ilustrasi bagian tumbuhan dan kebutuhan cahaya serta air"><figcaption class="text-xs text-muted-foreground mt-2">Bagian tumbuhan dan kebutuhan cahaya serta air. Ilustrasi dari kerangka asesmen IPAS.</figcaption></figure>`;
         html += `<figure class="mt-6"><img class="max-w-full rounded-xl border border-slate-200 bg-white" src="data/assets/ipas-keragaman-indonesia.jpeg" alt="Peta Indonesia, rumah adat, dan pakaian tradisional daerah"><figcaption class="text-xs text-muted-foreground mt-2">Peta Indonesia, rumah adat, dan pakaian tradisional daerah. Ilustrasi dari kerangka asesmen IPAS.</figcaption></figure>`;
