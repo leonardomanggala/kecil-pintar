@@ -164,6 +164,9 @@
                     <i data-lucide="home" class="w-4 h-4"></i>
                     <span>Beranda</span>
                 </button>
+                <button onclick="switchView('settings')" class="flex items-center gap-1 px-2 sm:px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition" aria-label="Pengaturan akun" title="Pengaturan akun">
+                    <i data-lucide="settings-2" class="w-4 h-4"></i><span class="hidden sm:inline">Pengaturan</span>
+                </button>
                 <button onclick="signOut()" class="flex items-center gap-1 px-2 sm:px-3 py-1.5 text-sm font-medium rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition" aria-label="Keluar dari akun">
                     <i data-lucide="log-out" class="w-4 h-4"></i><span class="hidden sm:inline">Keluar</span>
                 </button>
@@ -218,7 +221,7 @@
                         <i data-lucide="star" class="w-3.5 h-3.5 fill-amber-300 text-amber-300"></i>
                         <span>Materi TKA SD 2027</span>
                     </div>
-                    <h1 class="text-2xl sm:text-4xl font-display font-bold tracking-tight mb-2">Halo, Bintang Kecil! ✨</h1>
+                    <h1 id="welcome-title" class="text-2xl sm:text-4xl font-display font-bold tracking-tight mb-2">Halo, Bintang Kecil! ✨</h1>
                     <p class="text-indigo-100 text-sm sm:text-base mb-6">Belajar dan berlatih dengan kerangka asesmen, rangkuman materi, serta paket soal TKA SD 2027.</p>
                     
                     <!-- Progress Level Bar -->
@@ -313,6 +316,36 @@
                 </div>
             </div>
         </div>
+
+        <!-- VIEW SETTINGS: ACCOUNT -->
+        <section id="view-settings" class="hidden max-w-3xl mx-auto space-y-5">
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="switchView('dashboard')" class="w-10 h-10 shrink-0 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center justify-center" aria-label="Kembali ke beranda"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+                <div><h1 class="text-2xl sm:text-3xl font-display font-bold text-slate-900">Pengaturan Akun</h1><p class="text-sm text-slate-500">Kelola informasi masuk dan profil akun wali.</p></div>
+            </div>
+
+            <form id="profile-form" onsubmit="saveProfileSettings(event)" class="shadcn-card p-5 sm:p-6 space-y-4">
+                <div><h2 class="font-display text-lg font-semibold text-slate-800">Profil</h2><p class="text-sm text-slate-500">Nama ini digunakan untuk menyapa Anda di halaman belajar.</p></div>
+                <div class="space-y-1.5"><label for="settings-username" class="text-sm font-semibold text-slate-700">Nama pengguna</label><input id="settings-username" name="username" maxlength="40" autocomplete="nickname" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="Nama panggilan"></div>
+                <div id="profile-message" class="hidden rounded-xl border p-3 text-sm leading-5" role="status" aria-live="polite"></div>
+                <button id="profile-submit" type="submit" class="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 text-sm font-semibold transition">Simpan nama</button>
+            </form>
+
+            <form id="email-form" onsubmit="saveEmailSettings(event)" class="shadcn-card p-5 sm:p-6 space-y-4">
+                <div><h2 class="font-display text-lg font-semibold text-slate-800">Alamat email</h2><p class="text-sm text-slate-500">Supabase akan mengirim tautan konfirmasi ke alamat email baru.</p></div>
+                <div class="space-y-1.5"><label for="settings-email" class="text-sm font-semibold text-slate-700">Email wali</label><input id="settings-email" name="email" type="email" autocomplete="email" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"></div>
+                <div id="email-message" class="hidden rounded-xl border p-3 text-sm leading-5" role="status" aria-live="polite"></div>
+                <button id="email-submit" type="submit" class="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 text-sm font-semibold transition">Perbarui email</button>
+            </form>
+
+            <form id="password-form" onsubmit="savePasswordSettings(event)" class="shadcn-card p-5 sm:p-6 space-y-4">
+                <div><h2 class="font-display text-lg font-semibold text-slate-800">Kata sandi</h2><p class="text-sm text-slate-500">Gunakan minimal 8 karakter. Kami akan meminta kata sandi saat ini untuk memastikan perubahan ini.</p></div>
+                <div class="grid gap-4 sm:grid-cols-2"><div class="space-y-1.5"><label for="settings-current-password" class="text-sm font-semibold text-slate-700">Kata sandi saat ini</label><input id="settings-current-password" type="password" autocomplete="current-password" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"></div><div class="space-y-1.5"><label for="settings-new-password" class="text-sm font-semibold text-slate-700">Kata sandi baru</label><input id="settings-new-password" type="password" autocomplete="new-password" minlength="8" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"></div></div>
+                <div class="space-y-1.5"><label for="settings-confirm-password" class="text-sm font-semibold text-slate-700">Ulangi kata sandi baru</label><input id="settings-confirm-password" type="password" autocomplete="new-password" minlength="8" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"></div>
+                <div id="password-message" class="hidden rounded-xl border p-3 text-sm leading-5" role="status" aria-live="polite"></div>
+                <button id="password-submit" type="submit" class="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 text-sm font-semibold transition">Ganti kata sandi</button>
+            </form>
+        </section>
 
         <!-- VIEW 2: QUIZ INTERACTIVE -->
         <div id="view-quiz" class="hidden min-w-0 max-w-2xl mx-auto space-y-4 sm:space-y-6">

@@ -98,8 +98,12 @@ async function enterApp(user) {
     if (!user || user.is_anonymous) return showAuthScreen(false);
     currentUserId = user.id;
     currentAccountEmail = user.email || '';
+    const displayName = String(user.user_metadata?.username || user.user_metadata?.full_name || '').trim();
     currentProgressStorageKey = `${progressStorageKey}:${currentUserId}`;
     document.getElementById('user-email').innerText = currentAccountEmail;
+    document.getElementById('settings-username').value = displayName;
+    document.getElementById('settings-email').value = currentAccountEmail;
+    document.getElementById('welcome-title').innerText = displayName ? `Halo, ${displayName}! ✨` : 'Halo, Bintang Kecil! ✨';
     document.getElementById('member-controls').classList.remove('hidden');
     document.getElementById('view-auth').classList.add('hidden');
     userState = createInitialUserState();
@@ -191,6 +195,71 @@ async function signOut() {
     setAuthMessage('Anda sudah keluar dari akun.', 'success');
 }
 
+function setSettingsMessage(id, message = '', kind = 'success') {
+    const box = document.getElementById(id);
+    box.innerText = message;
+    box.className = `rounded-xl border p-3 text-sm leading-5 ${kind === 'error' ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`;
+    box.classList.toggle('hidden', !message);
+}
+
+async function withSettingsSubmit(buttonId, messageId, message, action) {
+    const button = document.getElementById(buttonId);
+    button.disabled = true;
+    button.classList.add('opacity-60');
+    setSettingsMessage(messageId, message);
+    try {
+        await action();
+    } catch (error) {
+        setSettingsMessage(messageId, authErrorMessage(error), 'error');
+    } finally {
+        button.disabled = false;
+        button.classList.remove('opacity-60');
+    }
+}
+
+async function saveProfileSettings(event) {
+    event.preventDefault();
+    if (!supabaseClient || !currentUserId) return setSettingsMessage('profile-message', 'Silakan masuk kembali untuk mengubah profil.', 'error');
+    const username = document.getElementById('settings-username').value.trim();
+    if (!username) return setSettingsMessage('profile-message', 'Nama pengguna tidak boleh kosong.', 'error');
+    await withSettingsSubmit('profile-submit', 'profile-message', 'Menyimpan nama…', async () => {
+        const { data, error } = await supabaseClient.auth.updateUser({ data: { username } });
+        if (error) throw error;
+        document.getElementById('welcome-title').innerText = `Halo, ${username}! ✨`;
+        setSettingsMessage('profile-message', 'Nama pengguna berhasil diperbarui.');
+    });
+}
+
+async function saveEmailSettings(event) {
+    event.preventDefault();
+    if (!supabaseClient || !currentUserId) return setSettingsMessage('email-message', 'Silakan masuk kembali untuk mengubah email.', 'error');
+    const email = document.getElementById('settings-email').value.trim();
+    if (!email || email.toLowerCase() === currentAccountEmail.toLowerCase()) return setSettingsMessage('email-message', 'Masukkan alamat email baru yang berbeda dari email saat ini.', 'error');
+    await withSettingsSubmit('email-submit', 'email-message', 'Memperbarui email…', async () => {
+        const { error } = await supabaseClient.auth.updateUser({ email });
+        if (error) throw error;
+        setSettingsMessage('email-message', 'Tautan konfirmasi telah dikirim. Perubahan email berlaku setelah Anda mengonfirmasinya.');
+    });
+}
+
+async function savePasswordSettings(event) {
+    event.preventDefault();
+    if (!supabaseClient || !currentUserId) return setSettingsMessage('password-message', 'Silakan masuk kembali untuk mengubah kata sandi.', 'error');
+    const currentPassword = document.getElementById('settings-current-password').value;
+    const newPassword = document.getElementById('settings-new-password').value;
+    const confirmation = document.getElementById('settings-confirm-password').value;
+    if (newPassword.length < 8) return setSettingsMessage('password-message', 'Kata sandi baru minimal 8 karakter.', 'error');
+    if (newPassword !== confirmation) return setSettingsMessage('password-message', 'Kata sandi baru dan konfirmasinya belum sama.', 'error');
+    await withSettingsSubmit('password-submit', 'password-message', 'Memverifikasi kata sandi…', async () => {
+        const { error: verifyError } = await supabaseClient.auth.signInWithPassword({ email: currentAccountEmail, password: currentPassword });
+        if (verifyError) throw verifyError;
+        const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+        document.getElementById('password-form').reset();
+        setSettingsMessage('password-message', 'Kata sandi berhasil diganti.');
+    });
+}
+
 function saveLocalProgress() {
     if (currentProgressStorageKey) localStorage.setItem(currentProgressStorageKey, JSON.stringify(userState));
 }
@@ -217,7 +286,7 @@ async function persistProgress() {
 
 function switchView(viewName) {
     if (!currentUserId) { showAuthScreen(!supabaseClient); return; }
-    ['dashboard', 'quiz', 'result'].forEach(name => document.getElementById(`view-${name}`).classList.toggle('hidden', name !== viewName));
+    ['dashboard', 'settings', 'quiz', 'result'].forEach(name => document.getElementById(`view-${name}`).classList.toggle('hidden', name !== viewName));
     if (viewName === 'dashboard') renderDashboard();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     lucide.createIcons();
