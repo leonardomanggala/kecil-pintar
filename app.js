@@ -318,10 +318,9 @@ function renderDashboard() {
         const subjectPackages = packages.filter(item => item.subject === subject.id);
         const displayName = subject.id === 'ipas' ? 'Penguatan IPAS' : subject.name;
         const importantNote = (subjectPackages[0]?.packageNote || []).map(escapeHtml).join('<br><br>');
-        const noticeHeight = 'min-h-[140px] sm:min-h-[160px] lg:min-h-[180px]';
         const notice = importantNote
-            ? `<div class="${noticeHeight} rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">${importantNote}</div>`
-            : `<div class="${noticeHeight} rounded-lg border border-indigo-100 bg-indigo-50/70 p-3 text-xs leading-5 text-indigo-900 flex items-center">Buka rincian paket untuk melihat informasi, petunjuk, dan kisi-kisi latihan.</div>`;
+            ? `<div class="min-h-[140px] sm:min-h-[160px] lg:min-h-[180px] rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">${importantNote}</div>`
+            : '';
         return `<article class="shadcn-card h-full min-w-0 p-4 sm:p-5 flex flex-col gap-3 sm:gap-4">
             <div class="min-h-[110px] sm:min-h-[120px]"><div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl ${style.color} flex items-center justify-center mb-3 border"><i data-lucide="${style.icon}" class="w-6 h-6"></i></div>
             <h3 class="font-display font-bold text-lg text-slate-800">${escapeHtml(displayName)}</h3>
