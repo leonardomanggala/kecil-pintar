@@ -370,11 +370,16 @@
                 <div class="space-y-2">
                     <div class="flex justify-between text-xs font-semibold text-muted-foreground">
                         <span id="quiz-progress-text">Soal 1 dari 5</span>
-                        <span id="quiz-score-live">Skor: 0</span>
+                        <span id="quiz-score-live">Ragu: 0</span>
                     </div>
                     <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                         <div id="quiz-progress-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-300" style="width: 20%"></div>
                     </div>
+                </div>
+
+                <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2"><p class="text-xs font-semibold text-slate-700">Navigasi soal</p><p id="quiz-map-legend" class="text-[11px] text-slate-500">0 terjawab · 0 ragu · 0 belum dijawab</p></div>
+                    <div id="quiz-question-map" class="flex flex-wrap gap-2" aria-label="Pilih nomor soal"></div>
                 </div>
 
                 <!-- Question Box -->
@@ -389,7 +394,10 @@
                 <div id="quiz-options" class="space-y-3">
                     <!-- Options injected by JS -->
                 </div>
-                <button id="quiz-submit" onclick="submitAnswer()" class="hidden w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-display font-semibold shadow-lg shadow-indigo-200 transition">Periksa Jawaban</button>
+                <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <button id="quiz-skip" type="button" onclick="skipCurrentQuestion()" class="w-full sm:w-auto px-5 py-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-semibold transition">Lewati dulu, masih ragu</button>
+                    <button id="quiz-submit" onclick="submitAnswer()" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-display font-semibold shadow-lg shadow-indigo-200 transition">Simpan jawaban & lanjut</button>
+                </div>
 
                 <!-- Explanation Box (Hidden initially) -->
                 <div id="quiz-explanation-box" class="hidden p-4 rounded-xl border transition-all">
@@ -404,9 +412,9 @@
 
                 <!-- Next Button -->
                 <div class="flex justify-end pt-2">
-                    <button id="btn-next-question" onclick="nextQuestion()" class="hidden w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-display font-semibold shadow-lg shadow-indigo-200 transition flex items-center justify-center space-x-2">
-                        <span>Lanjut Soal Berikutnya</span>
-                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    <button id="quiz-finish" onclick="finalizeQuiz()" class="hidden w-full px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-display font-semibold shadow-lg shadow-emerald-200 transition items-center justify-center gap-2">
+                        <span>Selesai & lihat kunci jawaban</span>
+                        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
                     </button>
                 </div>
             </div>

@@ -365,6 +365,7 @@ function startQuiz(packageId) {
         categoryId: selectedPackage.subject, packageId, packageNumber: selectedPackage.package,
         questions: selectedPackage.questions, currentIndex: 0, points: 0, correctCount: 0,
         incorrectCount: 0, partialCount: 0, answeredCount: 0, answered: false,
+        responses: Array(selectedPackage.questions.length).fill(null), skipped: Array(selectedPackage.questions.length).fill(false),
         selected: null, remainingSeconds: selectedPackage.durationMinutes * 60,
         timerInterval: null, finished: false
     };
@@ -377,29 +378,57 @@ function startQuiz(packageId) {
 
 function renderQuestion() {
     const question = currentQuiz.questions[currentQuiz.currentIndex];
+    const savedResponse = currentQuiz.responses[currentQuiz.currentIndex];
     currentQuiz.answered = false;
-    currentQuiz.selected = question.type === 'multiple' ? new Set() : question.type === 'category' ? Array(question.options.length).fill(null) : null;
+    currentQuiz.selected = savedResponse === null
+        ? question.type === 'multiple' ? new Set() : question.type === 'category' ? Array(question.options.length).fill(null) : null
+        : question.type === 'multiple' ? new Set(savedResponse) : question.type === 'category' ? [...savedResponse] : savedResponse;
     const total = currentQuiz.questions.length;
-    document.getElementById('quiz-progress-text').innerText = `Soal ${currentQuiz.currentIndex + 1} dari ${total}`;
-    document.getElementById('quiz-score-live').innerText = `Skor: ${currentQuiz.points.toLocaleString('id-ID')} / ${total}`;
-    document.getElementById('quiz-progress-bar').style.width = `${((currentQuiz.currentIndex + 1) / total) * 100}%`;
+    const savedCount = currentQuiz.responses.filter(response => response !== null).length;
+    document.getElementById('quiz-progress-text').innerText = `Soal ${currentQuiz.currentIndex + 1} dari ${total} · Terjawab ${savedCount}`;
+    document.getElementById('quiz-score-live').innerText = `Ragu: ${currentQuiz.skipped.filter(Boolean).length}`;
+    document.getElementById('quiz-progress-bar').style.width = `${(savedCount / total) * 100}%`;
     document.getElementById('quiz-question-title').innerText = question.prompt;
     const stimulus = document.getElementById('quiz-stimulus');
     stimulus.classList.toggle('hidden', !question.stimulus);
     stimulus.innerHTML = question.stimulus ? `<div class="font-semibold text-indigo-800 mb-2">Bacaan / stimulus</div>${richText(question.stimulus)}` : '';
     document.getElementById('quiz-explanation-box').classList.add('hidden');
-    document.getElementById('btn-next-question').classList.add('hidden');
+    document.getElementById('quiz-skip').classList.toggle('hidden', savedResponse !== null);
+    document.getElementById('quiz-finish').classList.toggle('hidden', savedCount !== total);
     renderAnswerControls();
+    renderQuestionNavigator();
     lucide.createIcons();
+}
+
+function renderQuestionNavigator() {
+    document.getElementById('quiz-question-map').innerHTML = currentQuiz.questions.map((_, index) => {
+        const answered = currentQuiz.responses[index] !== null;
+        const skipped = currentQuiz.skipped[index] && !answered;
+        const current = index === currentQuiz.currentIndex;
+        const tone = current ? 'border-indigo-600 bg-indigo-600 text-white' : answered ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : skipped ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-slate-200 bg-white text-slate-600';
+        const status = answered ? 'sudah dijawab' : skipped ? 'ditandai ragu' : 'belum dijawab';
+        return `<button type="button" onclick="goToQuestion(${index})" aria-label="Soal ${index + 1}, ${status}" aria-current="${current ? 'step' : 'false'}" class="h-10 min-w-10 rounded-lg border text-sm font-semibold ${tone}">${index + 1}</button>`;
+    }).join('');
+    const unanswered = currentQuiz.responses.filter(response => response === null).length;
+    const uncertain = currentQuiz.skipped.filter((skipped, index) => skipped && currentQuiz.responses[index] === null).length;
+    document.getElementById('quiz-map-legend').innerText = `${currentQuiz.responses.length - unanswered} terjawab · ${uncertain} ragu · ${unanswered} belum dijawab`;
+}
+
+function goToQuestion(index) {
+    if (index < 0 || index >= currentQuiz.questions.length) return;
+    currentQuiz.currentIndex = index;
+    renderQuestion();
 }
 
 function renderAnswerControls() {
     const question = currentQuiz.questions[currentQuiz.currentIndex];
     const container = document.getElementById('quiz-options');
     const submit = document.getElementById('quiz-submit');
-    submit.classList.toggle('hidden', question.type === 'single' || currentQuiz.answered);
+    submit.classList.remove('hidden');
+    submit.innerText = currentQuiz.responses[currentQuiz.currentIndex] === null ? 'Simpan jawaban & lanjut' : 'Perbarui jawaban';
     if (question.type === 'single') {
-        container.innerHTML = question.options.map((option, index) => `<button onclick="selectSingleAnswer(${index})" id="opt-${index}" class="w-full text-left p-4 rounded-xl border border-border bg-white hover:border-indigo-400 hover:bg-indigo-50/30 transition-all font-medium text-slate-700 flex items-center justify-between group"><span class="flex items-center space-x-3"><span class="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 font-display font-bold text-xs flex items-center justify-center">${String.fromCharCode(65 + index)}</span><span class="text-sm sm:text-base">${escapeHtml(option)}</span></span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i></button>`).join('');
+        container.innerHTML = question.options.map((option, index) => `<button onclick="selectSingleAnswer(${index})" id="opt-${index}" class="w-full text-left p-4 rounded-xl border ${currentQuiz.selected === index ? 'border-indigo-400 bg-indigo-50' : 'border-border bg-white'} hover:border-indigo-400 hover:bg-indigo-50/30 transition-all font-medium text-slate-700 flex items-center justify-between group"><span class="flex items-center space-x-3"><span class="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 font-display font-bold text-xs flex items-center justify-center">${String.fromCharCode(65 + index)}</span><span class="text-sm sm:text-base">${escapeHtml(option)}</span></span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i></button>`).join('');
+        submit.disabled = currentQuiz.selected === null;
     } else if (question.type === 'multiple') {
         container.innerHTML = `<p class="text-xs text-indigo-700 font-semibold">Pilih semua jawaban yang benar.</p>` + question.options.map((option, index) => {
             const chosen = currentQuiz.selected.has(index);
@@ -418,25 +447,25 @@ function renderAnswerControls() {
     lucide.createIcons();
 }
 
-function selectSingleAnswer(index) { if (!currentQuiz.answered) submitResponse(index); }
+function selectSingleAnswer(index) { currentQuiz.selected = index; renderAnswerControls(); }
 function toggleMultipleChoice(index) {
-    if (currentQuiz.answered) return;
     currentQuiz.selected.has(index) ? currentQuiz.selected.delete(index) : currentQuiz.selected.add(index);
     renderAnswerControls();
 }
 function selectCategoryAnswer(row, value) {
-    if (currentQuiz.answered) return;
     currentQuiz.selected[row] = value;
     renderAnswerControls();
 }
 function submitAnswer() {
     const question = currentQuiz.questions[currentQuiz.currentIndex];
+    if (question.type === 'single' && currentQuiz.selected === null) return;
     if (question.type === 'multiple' && currentQuiz.selected.size === 0) return;
     if (question.type === 'category' && currentQuiz.selected.some(value => value === null)) return;
     submitResponse(currentQuiz.selected);
 }
 
 function gradeAnswer(question, selected) {
+    if (selected === null || selected === undefined) return 0;
     if (question.type === 'single') return selected === question.answer ? 1 : 0;
     if (question.type === 'multiple') {
         const expected = new Set(question.answer || []);
@@ -458,22 +487,33 @@ function answerDescription(question) {
 }
 
 function submitResponse(selected) {
-    if (currentQuiz.answered) return;
-    currentQuiz.answered = true;
-    currentQuiz.answeredCount++;
-    const question = currentQuiz.questions[currentQuiz.currentIndex];
-    const points = gradeAnswer(question, selected);
-    currentQuiz.points += points;
-    if (points === 1) currentQuiz.correctCount++;
-    else if (points === 0.5) currentQuiz.partialCount++;
-    else currentQuiz.incorrectCount++;
-    document.getElementById('quiz-score-live').innerText = `Skor: ${currentQuiz.points.toLocaleString('id-ID')} / ${currentQuiz.questions.length}`;
-    renderAnswerControls();
-    const feedback = points === 1 ? 'Jawaban tepat! +1 poin. ' : points === 0.5 ? 'Hampir tepat! +0,5 poin. ' : 'Belum tepat. ';
-    showExplanation(points > 0, `${feedback}${answerDescription(question)}. ${question.explanation}`);
-    document.getElementById('btn-next-question').classList.remove('hidden');
-    document.getElementById('quiz-submit').classList.add('hidden');
-    markAnswerStyles(question, selected);
+    const index = currentQuiz.currentIndex;
+    currentQuiz.responses[index] = selected instanceof Set ? [...selected] : Array.isArray(selected) ? [...selected] : selected;
+    currentQuiz.skipped[index] = false;
+    const next = findNextUnanswered(index);
+    if (next === -1) renderQuestion();
+    else goToQuestion(next);
+}
+
+function findNextUnanswered(fromIndex) {
+    const total = currentQuiz.questions.length;
+    for (let step = 1; step <= total; step++) {
+        const index = (fromIndex + step) % total;
+        if (currentQuiz.responses[index] === null) return index;
+    }
+    return -1;
+}
+
+function skipCurrentQuestion() {
+    const index = currentQuiz.currentIndex;
+    if (currentQuiz.responses[index] !== null) return;
+    currentQuiz.skipped[index] = true;
+    const next = findNextUnanswered(index);
+    if (next !== -1 && next !== index) goToQuestion(next);
+    else {
+        renderQuestionNavigator();
+        document.getElementById('quiz-skip').classList.add('hidden');
+    }
 }
 
 function markAnswerStyles(question, selected) {
@@ -536,17 +576,37 @@ function updateTimerDisplay() {
 }
 function finishOnTimeout() {
     if (currentQuiz.finished) return;
-    if (!currentQuiz.answered) { currentQuiz.incorrectCount++; currentQuiz.answeredCount++; }
-    const counted = currentQuiz.currentIndex + (currentQuiz.answered ? 1 : 0);
-    currentQuiz.incorrectCount += Math.max(0, currentQuiz.questions.length - counted);
-    finishQuiz();
+    calculateQuizResults();
 }
 
 function nextQuestion() {
-    if (currentQuiz.currentIndex + 1 < currentQuiz.questions.length) {
-        currentQuiz.currentIndex++;
-        renderQuestion();
-    } else finishQuiz();
+    const next = findNextUnanswered(currentQuiz.currentIndex);
+    if (next !== -1) goToQuestion(next);
+    else finalizeQuiz();
+}
+
+function finalizeQuiz() {
+    if (currentQuiz.responses.some(response => response === null)) return;
+    calculateQuizResults();
+}
+
+function calculateQuizResults() {
+    if (currentQuiz.finished) return;
+    currentQuiz.points = 0;
+    currentQuiz.correctCount = 0;
+    currentQuiz.incorrectCount = 0;
+    currentQuiz.partialCount = 0;
+    currentQuiz.answeredCount = currentQuiz.responses.filter(response => response !== null).length;
+    currentQuiz.questions.forEach((question, index) => {
+        const saved = currentQuiz.responses[index];
+        const response = question.type === 'multiple' && saved !== null ? new Set(saved) : saved;
+        const points = gradeAnswer(question, response);
+        currentQuiz.points += points;
+        if (points === 1) currentQuiz.correctCount++;
+        else if (points === 0.5) currentQuiz.partialCount++;
+        else currentQuiz.incorrectCount++;
+    });
+    finishQuiz();
 }
 
 function unlockBadge(id) {
