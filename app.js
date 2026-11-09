@@ -42,6 +42,10 @@ let quizHistoryTotal = 0;
 let quizHistoryLoading = false;
 let quizHistoryError = false;
 const quizHistoryPageSize = 10;
+let learningAnalytics = [];
+let analyticsSubject = 'all';
+let analyticsPeriod = '30';
+let analyticsMetric = 'score';
 const progressStorageKey = 'kecil-pintar-progress-v2';
 
 function escapeHtml(value) {
@@ -127,6 +131,7 @@ async function enterApp(user) {
     renderReferences();
     switchView('dashboard');
     void loadQuizHistory(true);
+    void loadLearningAnalytics();
 }
 
 function setAuthMessage(message = '', kind = 'info') {
@@ -354,6 +359,165 @@ function historyAttemptDetailsMarkup(attempt) {
     return `<div class="space-y-2">${attempt.question_review.map(historyQuestionMarkup).join('')}</div>`;
 }
 
+function analyticsAccuracy(attempt) {
+    const total = Number(attempt.question_count) || 0;
+    if (!total) return 0;
+    return ((Number(attempt.correct_count) + Number(attempt.partial_count) * 0.5) / total) * 100;
+}
+
+function analyticsSubjectName(id) {
+    return subjects.find(subject => subject.id === id)?.name || 'Mata pelajaran';
+}
+
+function setAnalyticsSubject(id) {
+    analyticsSubject = id;
+    renderLearningAnalytics();
+}
+
+function setAnalyticsPeriod(period) {
+    analyticsPeriod = period;
+    renderLearningAnalytics();
+}
+
+function setAnalyticsMetric(metric) {
+    analyticsMetric = metric === 'accuracy' ? 'accuracy' : 'score';
+    renderLearningAnalytics();
+}
+
+function analyticsPeriodStart(now = new Date()) {
+    if (analyticsPeriod === '30') return new Date(now.getTime() - 30 * 86400000);
+    if (analyticsPeriod === 'semester') return new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    return new Date(now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1, 6, 1);
+}
+
+function renderLearningAnalytics() {
+    const filters = document.getElementById('analytics-subject-filters');
+    const summary = document.getElementById('analytics-summary');
+    const chart = document.getElementById('analytics-chart');
+    const insight = document.getElementById('analytics-insight');
+    if (!filters || !summary || !chart || !insight) return;
+
+    const selectedButton = 'shrink-0 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm';
+    const idleButton = 'shrink-0 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-indigo-50';
+    filters.innerHTML = `<button type="button" onclick="setAnalyticsSubject('all')" aria-pressed="${analyticsSubject === 'all'}" class="${analyticsSubject === 'all' ? selectedButton : idleButton}">Semua Mapel</button>${subjects.map(subject => `<button type="button" onclick="setAnalyticsSubject('${escapeHtml(subject.id)}')" aria-pressed="${analyticsSubject === subject.id}" class="${analyticsSubject === subject.id ? selectedButton : idleButton}">${escapeHtml(subject.name)}</button>`).join('')}`;
+    const periodControl = document.getElementById('analytics-period');
+    if (periodControl) periodControl.value = analyticsPeriod;
+    const scoreButton = document.getElementById('analytics-score-button');
+    const accuracyButton = document.getElementById('analytics-accuracy-button');
+    [scoreButton, accuracyButton].forEach(button => button?.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm'));
+    [scoreButton, accuracyButton].forEach(button => button?.classList.add('text-slate-600', 'hover:bg-indigo-50'));
+    const activeMetricButton = analyticsMetric === 'score' ? scoreButton : accuracyButton;
+    activeMetricButton?.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
+    activeMetricButton?.classList.remove('text-slate-600', 'hover:bg-indigo-50');
+
+    const from = analyticsPeriodStart();
+    const rows = learningAnalytics.filter(attempt => {
+        const date = new Date(attempt.created_at);
+        return date >= from && (analyticsSubject === 'all' || attempt.category_id === analyticsSubject);
+    }).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const values = rows.map(attempt => analyticsMetric === 'score' ? Number(attempt.score) || 0 : analyticsAccuracy(attempt));
+    const average = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+    const highestIndex = values.length ? values.indexOf(Math.max(...values)) : -1;
+    const accuracyAverage = rows.length ? rows.reduce((sum, attempt) => sum + analyticsAccuracy(attempt), 0) / rows.length : 0;
+    const number = value => Number(value).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const statCard = (label, value, sub, color = 'text-slate-800') => `<div class="min-w-0 rounded-xl border border-slate-100 bg-white p-3 sm:p-4"><p class="text-[11px] leading-4 text-slate-500 sm:text-xs">${label}</p><p class="mt-1 truncate font-display text-xl font-semibold ${color}">${value}</p><p class="mt-0.5 truncate text-[10px] leading-4 text-slate-400">${sub}</p></div>`;
+    const periodName = analyticsPeriod === '30' ? '30 hari terakhir' : analyticsPeriod === 'semester' ? '6 bulan terakhir' : 'tahun ajaran berjalan';
+    const highest = highestIndex >= 0 ? `${number(values[highestIndex])} · Paket ${escapeHtml(rows[highestIndex].package_number)} · ${escapeHtml(analyticsSubjectName(rows[highestIndex].category_id))}` : 'Belum ada nilai';
+    summary.innerHTML = statCard('Rata-rata nilai', rows.length ? number(rows.reduce((sum, row) => sum + (Number(row.score) || 0), 0) / rows.length) : '—', `dari ${rows.length} latihan · ${periodName}`, 'text-indigo-700')
+        + statCard('Skor tertinggi', highestIndex >= 0 ? number(values[highestIndex]) : '—', highestIndex >= 0 ? `Nilai pada filter ${analyticsMetric === 'score' ? 'skor' : 'akurasi'}` : 'Selesaikan latihan pertamamu', 'text-violet-700')
+        + statCard('Total latihan', `${rows.length}`, `${rows.reduce((sum, row) => sum + (Number(row.question_count) || 0), 0)} soal terselesaikan`, 'text-slate-800')
+        + statCard('Akurasi rata-rata', rows.length ? `${number(accuracyAverage)}%` : '—', 'Benar + setengah poin parsial', 'text-amber-600');
+
+    const metricLabel = analyticsMetric === 'score' ? 'Skor per latihan' : 'Akurasi per latihan';
+    document.getElementById('analytics-chart-label').innerText = metricLabel;
+    chart.setAttribute('aria-label', `${metricLabel} selama ${periodName}`);
+    if (!rows.length) {
+        chart.innerHTML = '<div class="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 text-center text-sm text-slate-500">Belum ada data pada periode ini. Selesaikan latihan untuk melihat grafik perkembangan.</div>';
+        insight.innerHTML = '<strong>Rencana belajarmu:</strong> Kerjakan satu paket latihan, lalu lihat kembali hasil dan pembahasan setiap soal di Riwayat Latihan.';
+        document.getElementById('analytics-trend').innerText = 'Belum ada cukup data untuk menghitung tren';
+        return;
+    }
+
+    const sampled = rows.length > 12
+        ? Array.from({ length: 12 }, (_, index) => rows[Math.round(index * (rows.length - 1) / 11)])
+        : rows;
+    const plotted = sampled.map(attempt => ({
+        attempt,
+        value: analyticsMetric === 'score' ? Number(attempt.score) || 0 : analyticsAccuracy(attempt)
+    }));
+    const width = 720, height = 235, left = 42, right = 12, top = 18, bottom = 42;
+    const plotWidth = width - left - right, plotHeight = height - top - bottom;
+    const points = plotted.map((point, index) => ({
+        ...point,
+        x: left + (plotted.length === 1 ? plotWidth / 2 : index * plotWidth / (plotted.length - 1)),
+        y: top + (100 - Math.max(0, Math.min(100, point.value))) * plotHeight / 100
+    }));
+    const line = points.map(point => `${point.x},${point.y}`).join(' ');
+    const area = `${left},${top + plotHeight} ${line} ${left + plotWidth},${top + plotHeight}`;
+    const grid = [0, 25, 50, 75, 100].map(value => {
+        const y = top + (100 - value) * plotHeight / 100;
+        return `<line x1="${left}" y1="${y}" x2="${left + plotWidth}" y2="${y}" stroke="#e8edf5" stroke-dasharray="3 5"/><text x="${left - 8}" y="${y + 4}" text-anchor="end" fill="#94a3b8" font-size="10">${value}</text>`;
+    }).join('');
+    const circles = points.map(point => `<circle cx="${point.x}" cy="${point.y}" r="4.5" fill="#4f46e5" stroke="white" stroke-width="2"><title>${escapeHtml(analyticsSubjectName(point.attempt.category_id))} · Paket ${escapeHtml(point.attempt.package_number)} · ${number(point.value)} · ${new Date(point.attempt.created_at).toLocaleDateString('id-ID')}</title></circle>`).join('');
+    const labels = [0, Math.floor((points.length - 1) / 2), points.length - 1].filter((index, position, arr) => arr.indexOf(index) === position).map(index => {
+        const point = points[index];
+        return `<text x="${point.x}" y="${height - 12}" text-anchor="${index === 0 ? 'start' : index === points.length - 1 ? 'end' : 'middle'}" fill="#64748b" font-size="10">${escapeHtml(new Date(point.attempt.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }))}</text>`;
+    }).join('');
+    chart.innerHTML = `<svg class="h-auto max-h-[280px] min-h-48 w-full" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${escapeHtml(metricLabel)}: ${plotted.map(point => number(point.value)).join(', ')}"><defs><linearGradient id="analytics-area-gradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#6366f1" stop-opacity=".24"/><stop offset="100%" stop-color="#6366f1" stop-opacity=".015"/></linearGradient></defs>${grid}<polygon points="${area}" fill="url(#analytics-area-gradient)"/><polyline points="${line}" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${circles}${labels}</svg>`;
+
+    const half = Math.floor(rows.length / 2);
+    let trendCopy = 'Terus berlatih untuk membentuk pola perkembangan.';
+    let trendLabel = 'Terus berlatih untuk melihat tren';
+    if (rows.length >= 2) {
+        const split = Math.max(1, half);
+        const firstAverage = values.slice(0, split).reduce((sum, value) => sum + value, 0) / split;
+        const recentValues = values.slice(split);
+        const recentAverage = recentValues.reduce((sum, value) => sum + value, 0) / recentValues.length;
+        const difference = recentAverage - firstAverage;
+        if (difference > 1) {
+            trendLabel = `Tren positif · naik ${number(difference)} poin`;
+            trendCopy = `Rata-rata kelompok latihan terbaru naik ${number(difference)} poin dibanding kelompok sebelumnya. Pertahankan kebiasaan latihan dan tinjau pembahasan soal yang masih keliru.`;
+        } else if (difference < -1) {
+            trendLabel = `Perlu perhatian · turun ${number(Math.abs(difference))} poin`;
+            trendCopy = `Nilai kelompok latihan terbaru turun ${number(Math.abs(difference))} poin. Coba ulangi materi pada soal yang belum tepat, lalu kerjakan paket berikutnya dengan jeda belajar yang cukup.`;
+        } else {
+            trendLabel = 'Nilai relatif stabil';
+            trendCopy = 'Nilaimu relatif stabil. Untuk meningkat, fokuskan latihan pada soal yang salah atau parsial dan baca kembali cara penyelesaiannya.';
+        }
+    }
+    const trend = document.getElementById('analytics-trend');
+    trend.innerText = trendLabel;
+    trend.className = `rounded-full px-3 py-1.5 text-xs font-semibold ${trendLabel.includes('positif') ? 'bg-emerald-50 text-emerald-700' : trendLabel.includes('turun') ? 'bg-amber-50 text-amber-800' : 'bg-indigo-50 text-indigo-700'}`;
+    const perSubject = subjects.map(subject => {
+        const subjectRows = rows.filter(row => row.category_id === subject.id);
+        return { name: analyticsSubjectName(subject.id), count: subjectRows.length, average: subjectRows.length ? subjectRows.reduce((sum, row) => sum + Number(row.score || 0), 0) / subjectRows.length : null };
+    }).filter(item => item.count);
+    const lowest = perSubject.length > 1 ? [...perSubject].sort((a, b) => a.average - b.average)[0] : null;
+    const focus = lowest ? ` Mapel yang dapat menjadi fokus berikutnya: <strong>${escapeHtml(lowest.name)}</strong> dengan rata-rata ${number(lowest.average)} dari ${lowest.count} latihan.` : '';
+    insight.innerHTML = `<strong>Analisis belajar:</strong> ${trendCopy}${focus} Gunakan tombol Riwayat Latihan untuk meninjau jawaban, kunci, dan pembahasan.`;
+}
+
+async function loadLearningAnalytics() {
+    if (!supabaseClient || !currentUserId) {
+        learningAnalytics = [];
+        renderLearningAnalytics();
+        return;
+    }
+    const now = new Date();
+    const from = new Date(now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1, 6, 1).toISOString();
+    const { data, error } = await supabaseClient.from('quiz_attempts')
+        .select('category_id,package_number,score,correct_count,partial_count,question_count,created_at')
+        .eq('user_id', currentUserId)
+        .gte('created_at', from)
+        .order('created_at', { ascending: true })
+        .limit(1000);
+    if (error) {
+        console.error('Gagal memuat analisis belajar:', error.message);
+        learningAnalytics = [];
+    } else learningAnalytics = data || [];
+    renderLearningAnalytics();
+}
+
 function renderQuizHistory() {
     const list = document.getElementById('quiz-history-list');
     const count = document.getElementById('quiz-history-count');
@@ -463,6 +627,7 @@ function packageDetailsMarkup(item) {
 }
 
 function renderDashboard() {
+    renderLearningAnalytics();
     document.getElementById('header-coins').innerText = userState.coins;
     document.getElementById('header-level').innerText = `Level ${userState.level}`;
     document.getElementById('xp-text').innerText = `${userState.xp} / 100 XP`;
@@ -884,7 +1049,7 @@ function finishQuiz() {
     document.getElementById('result-unanswered').innerText = `${currentQuiz.unansweredCount} Belum dijawab`;
     document.getElementById('result-coins').innerHTML = `<i data-lucide="coins" class="w-5 h-5 fill-amber-400"></i> +50`;
     renderQuestionReview();
-    void persistProgress().then(() => loadQuizHistory(true)).catch(error => console.error('Gagal memperbarui riwayat latihan:', error));
+    void persistProgress().then(() => Promise.all([loadQuizHistory(true), loadLearningAnalytics()])).catch(error => console.error('Gagal memperbarui riwayat latihan:', error));
     switchView('result');
 }
 
