@@ -26,7 +26,7 @@ let userState = createInitialUserState();
 
 let currentQuiz = {
     categoryId: null, packageId: null, packageNumber: null, questions: [], currentIndex: 0,
-    points: 0, correctCount: 0, incorrectCount: 0, partialCount: 0, answeredCount: 0,
+    points: 0, correctCount: 0, incorrectCount: 0, partialCount: 0, unansweredCount: 0, answeredCount: 0,
     answered: false, selected: null, remainingSeconds: 75 * 60, timerInterval: null, finished: false
 };
 let supabaseClient = null;
@@ -372,7 +372,7 @@ function startQuiz(packageId) {
     currentQuiz = {
         categoryId: selectedPackage.subject, packageId, packageNumber: selectedPackage.package,
         questions: selectedPackage.questions, currentIndex: 0, points: 0, correctCount: 0,
-        incorrectCount: 0, partialCount: 0, answeredCount: 0, answered: false,
+        incorrectCount: 0, partialCount: 0, unansweredCount: 0, answeredCount: 0, answered: false,
         responses: Array(selectedPackage.questions.length).fill(null), skipped: Array(selectedPackage.questions.length).fill(false),
         selected: null, remainingSeconds: selectedPackage.durationMinutes * 60,
         timerInterval: null, finished: false
@@ -494,6 +494,70 @@ function answerDescription(question) {
     return `Kunci: ${question.answer.map((value, i) => `${i + 1}. ${labels[value]}`).join('; ')}`;
 }
 
+function reviewAnswerMarkup(question, response) {
+    const choice = index => `${String.fromCharCode(65 + index)}. ${escapeHtml(question.options[index] ?? '')}`;
+    if (question.type === 'single') {
+        return response === null || response === undefined ? 'Belum dijawab' : choice(response);
+    }
+    if (question.type === 'multiple') {
+        const selected = Array.isArray(response) ? response : response instanceof Set ? [...response] : [];
+        return selected.length ? selected.sort((a, b) => a - b).map(choice).join('<br>') : 'Belum dijawab';
+    }
+    const labels = question.categoryLabels?.length ? question.categoryLabels : ['Benar', 'Salah'];
+    const values = Array.isArray(response) ? response : [];
+    return question.options.map((_, index) => {
+        const value = values[index];
+        const label = value === null || value === undefined ? 'Belum dijawab' : escapeHtml(labels[value] ?? 'Belum dijawab');
+        return `<span class="block">${index + 1}. ${label}</span>`;
+    }).join('');
+}
+
+function renderQuestionReview() {
+    const list = document.getElementById('result-review-list');
+    if (!list) return;
+    const review = currentQuiz.questions.map((question, index) => {
+        const response = currentQuiz.responses[index];
+        const points = gradeAnswer(question, question.type === 'multiple' && response !== null ? new Set(response) : response);
+        const unanswered = response === null || response === undefined;
+        const status = unanswered ? 'Belum dijawab' : points === 1 ? 'Benar' : points === 0.5 ? 'Sebagian benar' : 'Belum tepat';
+        const tone = unanswered
+            ? { border: 'border-slate-200', badge: 'bg-slate-100 text-slate-700' }
+            : points === 1
+                ? { border: 'border-emerald-200', badge: 'bg-emerald-50 text-emerald-700' }
+                : points === 0.5
+                    ? { border: 'border-amber-200', badge: 'bg-amber-50 text-amber-700' }
+                    : { border: 'border-rose-200', badge: 'bg-rose-50 text-rose-700' };
+        const key = reviewAnswerMarkup(question, question.answer);
+        const learnerAnswer = reviewAnswerMarkup(question, response);
+        const explanation = question.explanation
+            ? `<p class="mt-1 text-sm leading-6 text-slate-700">${escapeHtml(question.explanation)}</p>`
+            : '<p class="mt-1 text-sm leading-6 text-slate-700">Pembahasan belum tersedia untuk soal ini.</p>';
+        const stimulus = question.stimulus
+            ? `<details class="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2"><summary class="cursor-pointer text-sm font-semibold text-slate-700">Lihat bacaan / stimulus</summary><div class="pt-2 text-sm leading-6 text-slate-700">${richText(question.stimulus)}</div></details>`
+            : '';
+        return { index, points, unanswered, markup: `<details class="result-review-item rounded-xl border ${tone.border} bg-white" data-review-index="${index}">
+            <summary class="flex cursor-pointer list-none items-start gap-3 rounded-xl p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+                <span class="shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold ${tone.badge}">${escapeHtml(status)}</span>
+                <span class="min-w-0 flex-1"><span class="block text-xs font-semibold text-slate-500">Nomor ${escapeHtml(question.number ?? index + 1)}</span><span class="mt-1 block text-sm font-semibold leading-5 text-slate-800">${escapeHtml(question.prompt)}</span></span>
+                <i data-lucide="chevron-down" class="mt-1 h-4 w-4 shrink-0 text-slate-400"></i>
+            </summary>
+            <div class="space-y-3 border-t border-slate-100 px-4 pb-4 pt-3">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div class="min-w-0 rounded-lg bg-slate-50 p-3"><h4 class="text-xs font-bold uppercase tracking-wide text-slate-500">Jawabanmu</h4><div class="mt-1 break-words text-sm leading-6 text-slate-700">${learnerAnswer}</div></div>
+                    <div class="min-w-0 rounded-lg bg-emerald-50 p-3"><h4 class="text-xs font-bold uppercase tracking-wide text-emerald-700">Kunci jawaban</h4><div class="mt-1 break-words text-sm leading-6 text-emerald-900">${key}</div></div>
+                </div>
+                <div class="rounded-lg border border-indigo-100 bg-indigo-50/60 p-3"><h4 class="text-xs font-bold uppercase tracking-wide text-indigo-700">Cara / pembahasan</h4>${explanation}</div>
+                ${stimulus}
+            </div>
+        </details>`};
+    });
+    const firstReview = review.find(item => item.unanswered || item.points < 1)?.index ?? 0;
+    list.innerHTML = review.map(item => item.markup).join('');
+    const firstDetails = list.querySelector(`[data-review-index="${firstReview}"]`);
+    if (firstDetails) firstDetails.open = true;
+    lucide.createIcons();
+}
+
 function submitResponse(selected) {
     const index = currentQuiz.currentIndex;
     currentQuiz.responses[index] = selected instanceof Set ? [...selected] : Array.isArray(selected) ? [...selected] : selected;
@@ -604,9 +668,14 @@ function calculateQuizResults() {
     currentQuiz.correctCount = 0;
     currentQuiz.incorrectCount = 0;
     currentQuiz.partialCount = 0;
+    currentQuiz.unansweredCount = 0;
     currentQuiz.answeredCount = currentQuiz.responses.filter(response => response !== null).length;
     currentQuiz.questions.forEach((question, index) => {
         const saved = currentQuiz.responses[index];
+        if (saved === null || saved === undefined) {
+            currentQuiz.unansweredCount++;
+            return;
+        }
         const response = question.type === 'multiple' && saved !== null ? new Set(saved) : saved;
         const points = gradeAnswer(question, response);
         currentQuiz.points += points;
@@ -648,7 +717,9 @@ function finishQuiz() {
     document.getElementById('result-correct').innerText = `${currentQuiz.correctCount} Tepat`;
     document.getElementById('result-incorrect').innerText = `${currentQuiz.incorrectCount} Salah`;
     document.getElementById('result-partial').innerText = `${currentQuiz.partialCount} Parsial`;
+    document.getElementById('result-unanswered').innerText = `${currentQuiz.unansweredCount} Belum dijawab`;
     document.getElementById('result-coins').innerHTML = `<i data-lucide="coins" class="w-5 h-5 fill-amber-400"></i> +50`;
+    renderQuestionReview();
     void persistProgress();
     switchView('result');
 }
