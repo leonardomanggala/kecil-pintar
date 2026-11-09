@@ -386,6 +386,7 @@ function renderQuizHistory() {
                         <span class="text-xs font-semibold text-indigo-700">Nilai</span>
                         <span class="font-display text-xl font-semibold text-indigo-800">${escapeHtml(score)}</span>
                     </div>
+                    <i data-lucide="chevron-down" class="h-4 w-4 shrink-0 text-slate-400 sm:ml-1"></i>
                 </summary>
                 <div class="space-y-3 border-t border-slate-100 bg-slate-50/70 p-3 sm:p-4">
                     <p class="text-xs leading-5 text-slate-500">Setiap nomor menunjukkan jawabanmu, status, kunci jawaban, dan pembahasannya.</p>
@@ -397,6 +398,7 @@ function renderQuizHistory() {
     moreButton.classList.toggle('hidden', !quizHistoryError && (quizHistoryOffset >= quizHistoryTotal || quizHistoryTotal === 0));
     moreButton.disabled = quizHistoryLoading;
     moreButton.innerText = quizHistoryLoading ? 'Memuat…' : quizHistoryError ? 'Coba lagi' : 'Muat riwayat lainnya';
+    lucide.createIcons();
 }
 
 async function loadQuizHistory(reset = false) {
