@@ -198,6 +198,10 @@
             content: '';
         }
 
+        #quiz-history-list details[open] > summary > i:last-child {
+            transform: rotate(180deg);
+        }
+
         @media (min-width: 640px) and (max-width: 1023px) {
             #category-grid > article:last-child:nth-child(odd) {
                 grid-column: 1 / -1;

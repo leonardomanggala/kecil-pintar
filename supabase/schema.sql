@@ -19,6 +19,7 @@ create table if not exists public.quiz_attempts (
   partial_count integer not null default 0 check (partial_count >= 0),
   question_count integer not null check (question_count > 0),
   coins_earned integer not null default 50 check (coins_earned >= 0),
+  question_review jsonb,
   created_at timestamptz not null default now()
 );
 

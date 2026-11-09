@@ -296,9 +296,62 @@ async function persistProgress() {
         user_id: currentUserId, category_id: currentQuiz.categoryId,
         package_number: currentQuiz.packageNumber, score: grade,
         correct_count: currentQuiz.correctCount, incorrect_count: currentQuiz.incorrectCount,
-        partial_count: currentQuiz.partialCount, question_count: currentQuiz.questions.length, coins_earned: 50
+        partial_count: currentQuiz.partialCount, question_count: currentQuiz.questions.length, coins_earned: 50,
+        question_review: currentQuiz.questions.map((question, index) => ({
+            number: question.number ?? index + 1,
+            prompt: question.prompt,
+            type: question.type,
+            options: question.options,
+            categoryLabels: question.categoryLabels || [],
+            answer: question.answer,
+            response: currentQuiz.responses[index],
+            explanation: question.explanation || '',
+            stimulus: question.stimulus || ''
+        }))
     });
     if (attemptError) console.error('Gagal mencatat latihan:', attemptError.message);
+}
+
+function historyQuestionMarkup(question, index) {
+    const response = question.response;
+    const unanswered = response === null || response === undefined;
+    const points = gradeAnswer(question, question.type === 'multiple' && !unanswered ? new Set(response) : response);
+    const status = unanswered ? 'Belum dijawab' : points === 1 ? 'Benar' : points === 0.5 ? 'Sebagian benar' : 'Belum tepat';
+    const tone = unanswered
+        ? { border: 'border-slate-200', badge: 'bg-slate-100 text-slate-700' }
+        : points === 1
+            ? { border: 'border-emerald-200', badge: 'bg-emerald-50 text-emerald-700' }
+            : points === 0.5
+                ? { border: 'border-amber-200', badge: 'bg-amber-50 text-amber-700' }
+                : { border: 'border-rose-200', badge: 'bg-rose-50 text-rose-700' };
+    const explanation = question.explanation
+        ? `<p class="mt-1 text-sm leading-6 text-slate-700">${escapeHtml(question.explanation)}</p>`
+        : '<p class="mt-1 text-sm leading-6 text-slate-700">Pembahasan belum tersedia untuk soal ini.</p>';
+    const stimulus = question.stimulus
+        ? `<details class="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2"><summary class="cursor-pointer text-sm font-semibold text-slate-700">Lihat bacaan / stimulus</summary><div class="pt-2 text-sm leading-6 text-slate-700">${richText(question.stimulus)}</div></details>`
+        : '';
+    return `<details class="rounded-xl border ${tone.border} bg-white">
+        <summary class="flex cursor-pointer list-none items-start gap-3 rounded-xl p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+            <span class="shrink-0 rounded-lg px-2 py-1 text-[11px] font-bold ${tone.badge}">${escapeHtml(status)}</span>
+            <span class="min-w-0 flex-1"><span class="block text-[11px] font-semibold text-slate-500">Nomor ${escapeHtml(question.number ?? index + 1)}</span><span class="mt-1 block text-sm font-semibold leading-5 text-slate-800">${escapeHtml(question.prompt)}</span></span>
+            <i data-lucide="chevron-down" class="mt-1 h-4 w-4 shrink-0 text-slate-400"></i>
+        </summary>
+        <div class="space-y-3 border-t border-slate-100 px-3 pb-3 pt-3 sm:px-4">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div class="min-w-0 rounded-lg bg-slate-50 p-3"><h4 class="text-xs font-bold uppercase tracking-wide text-slate-500">Jawabanmu</h4><div class="mt-1 break-words text-sm leading-6 text-slate-700">${reviewAnswerMarkup(question, response)}</div></div>
+                <div class="min-w-0 rounded-lg bg-emerald-50 p-3"><h4 class="text-xs font-bold uppercase tracking-wide text-emerald-700">Kunci jawaban</h4><div class="mt-1 break-words text-sm leading-6 text-emerald-900">${reviewAnswerMarkup(question, question.answer)}</div></div>
+            </div>
+            <div class="rounded-lg border border-indigo-100 bg-indigo-50/60 p-3"><h4 class="text-xs font-bold uppercase tracking-wide text-indigo-700">Cara / pembahasan</h4>${explanation}</div>
+            ${stimulus}
+        </div>
+    </details>`;
+}
+
+function historyAttemptDetailsMarkup(attempt) {
+    if (!Array.isArray(attempt.question_review) || !attempt.question_review.length) {
+        return '<div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900">Detail jawaban untuk tes ini belum tersimpan. Riwayat ini dibuat sebelum jawaban per nomor dan pembahasan disimpan.</div>';
+    }
+    return `<div class="space-y-2">${attempt.question_review.map(historyQuestionMarkup).join('')}</div>`;
 }
 
 function renderQuizHistory() {
@@ -316,22 +369,29 @@ function renderQuizHistory() {
             const subject = subjects.find(item => item.id === attempt.category_id)?.name || 'Mata pelajaran';
             const date = attempt.created_at ? new Date(attempt.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' }) : 'Tanggal tidak tersedia';
             const score = Number(attempt.score || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            return `<article class="flex min-w-0 flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="min-w-0 flex-1">
-                    <h3 class="truncate font-display text-base font-semibold text-slate-800">${escapeHtml(subject)} · Paket ${escapeHtml(attempt.package_number)}</h3>
-                    <p class="mt-0.5 text-xs text-slate-500">${escapeHtml(date)}</p>
-                    <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
-                        <span class="text-emerald-700">${escapeHtml(attempt.correct_count)} benar</span>
-                        <span class="text-rose-700">${escapeHtml(attempt.incorrect_count)} salah</span>
-                        <span class="text-amber-700">${escapeHtml(attempt.partial_count)} parsial</span>
-                        <span class="text-slate-500">${escapeHtml(attempt.question_count)} soal</span>
+            return `<details class="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <summary class="flex cursor-pointer list-none flex-col gap-3 p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="min-w-0 flex-1">
+                        <h3 class="truncate font-display text-base font-semibold text-slate-800">${escapeHtml(subject)} · Paket ${escapeHtml(attempt.package_number)}</h3>
+                        <p class="mt-0.5 text-xs text-slate-500">${escapeHtml(date)}</p>
+                        <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
+                            <span class="text-emerald-700">${escapeHtml(attempt.correct_count)} benar</span>
+                            <span class="text-rose-700">${escapeHtml(attempt.incorrect_count)} salah</span>
+                            <span class="text-amber-700">${escapeHtml(attempt.partial_count)} parsial</span>
+                            <span class="text-slate-500">${escapeHtml(attempt.question_count)} soal</span>
+                        </div>
+                        <span class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-indigo-700"><i data-lucide="list-checks" class="h-4 w-4"></i>Lihat kesalahan, kunci, dan pembahasan</span>
                     </div>
+                    <div class="flex shrink-0 items-center justify-between gap-3 rounded-lg bg-indigo-50 px-3 py-2 sm:min-w-32 sm:flex-col sm:items-start sm:gap-0">
+                        <span class="text-xs font-semibold text-indigo-700">Nilai</span>
+                        <span class="font-display text-xl font-semibold text-indigo-800">${escapeHtml(score)}</span>
+                    </div>
+                </summary>
+                <div class="space-y-3 border-t border-slate-100 bg-slate-50/70 p-3 sm:p-4">
+                    <p class="text-xs leading-5 text-slate-500">Setiap nomor menunjukkan jawabanmu, status, kunci jawaban, dan pembahasannya.</p>
+                    ${historyAttemptDetailsMarkup(attempt)}
                 </div>
-                <div class="flex shrink-0 items-center justify-between gap-3 rounded-lg bg-indigo-50 px-3 py-2 sm:min-w-32 sm:flex-col sm:items-start sm:gap-0">
-                    <span class="text-xs font-semibold text-indigo-700">Nilai</span>
-                    <span class="font-display text-xl font-semibold text-indigo-800">${escapeHtml(score)}</span>
-                </div>
-            </article>`;
+            </details>`;
         }).join('');
     }
     moreButton.classList.toggle('hidden', !quizHistoryError && (quizHistoryOffset >= quizHistoryTotal || quizHistoryTotal === 0));
@@ -363,7 +423,7 @@ async function loadQuizHistory(reset = false) {
         const from = quizHistoryOffset;
         const to = from + quizHistoryPageSize - 1;
         const { data, error, count } = await supabaseClient.from('quiz_attempts')
-            .select('id,category_id,package_number,score,correct_count,incorrect_count,partial_count,question_count,created_at', { count: 'exact' })
+            .select('id,category_id,package_number,score,correct_count,incorrect_count,partial_count,question_count,question_review,created_at', { count: 'exact' })
             .eq('user_id', currentUserId)
             .order('created_at', { ascending: false })
             .range(from, to);
