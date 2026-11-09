@@ -219,9 +219,48 @@
             #reference-content .reference-prose { gap: 0.75rem; }
             #view-dashboard { gap: 1rem; }
         }
+
+        body.auth-screen > header { display: none; }
+        body.auth-screen > main {
+            display: grid;
+            width: 100%;
+            max-width: none;
+            height: 100svh;
+            min-height: 100svh;
+            place-items: center;
+            overflow: hidden;
+            padding: clamp(0.4rem, 1.8vh, 1.25rem) clamp(0.5rem, 2vw, 1rem);
+        }
+        body.auth-screen #view-auth { width: min(100%, 64rem); max-width: 64rem; max-height: 100%; margin: auto; padding: 0; }
+        body.auth-screen #view-auth > div { max-height: 100%; }
+
+        @media (max-width: 639px) {
+            body.auth-screen #view-auth aside { min-height: 150px; padding: 0.65rem 1rem; }
+            body.auth-screen #view-auth aside > div:nth-of-type(3) { margin-top: 0.4rem; max-width: 62%; }
+            body.auth-screen #view-auth aside > div:nth-of-type(3) h1 { margin-top: 0.35rem; font-size: 1.2rem; line-height: 1.08; }
+            body.auth-screen #view-auth aside > div:nth-of-type(3) p { display: none; }
+            body.auth-screen #view-auth aside > img { height: 62%; width: 49%; right: 0; }
+            body.auth-screen #view-auth > div > div:last-child { padding: 0.9rem 1rem; }
+            body.auth-screen #view-auth > div > div:last-child > div:first-child { margin-bottom: 0.75rem; }
+            body.auth-screen #auth-heading { font-size: 1.35rem; }
+            body.auth-screen #view-auth > div > div:last-child > div:nth-child(2) { margin-bottom: 0.75rem; }
+            body.auth-screen #auth-form > :not([hidden]) ~ :not([hidden]) { margin-top: 0.5rem; }
+            body.auth-screen #auth-form input { padding-top: 0.45rem; padding-bottom: 0.45rem; }
+            body.auth-screen #auth-form > p { font-size: 11px; line-height: 1rem; }
+            body.auth-screen #view-auth > div > div:last-child > p:last-child { display: none; }
+        }
+
+        @media (max-height: 680px) and (max-width: 1023px) {
+            body.auth-screen > main { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+            body.auth-screen #view-auth aside { min-height: 145px; }
+            body.auth-screen #view-auth > div > div:last-child { padding-top: 0.7rem; padding-bottom: 0.7rem; }
+            body.auth-screen #view-auth > div > div:last-child > div:first-child { margin-bottom: 0.5rem; }
+            body.auth-screen #view-auth > div > div:last-child > div:nth-child(2) { margin-bottom: 0.5rem; }
+            body.auth-screen #auth-form > :not([hidden]) ~ :not([hidden]) { margin-top: 0.45rem; }
+        }
     </style>
 </head>
-<body class="min-h-full flex flex-col bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white">
+<body class="auth-screen min-h-full flex flex-col bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white">
 
     <!-- Navbar / Header ala Shadcn -->
     <header class="sticky top-0 z-50 w-full border-b border-border/40 bg-white/80 backdrop-blur-md">

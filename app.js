@@ -93,6 +93,7 @@ async function initializeApp() {
 }
 
 function showAuthScreen(needsSetup = false, message = '') {
+    document.body.classList.add('auth-screen');
     currentUserId = null;
     currentAccountEmail = '';
     currentProgressStorageKey = null;
@@ -106,6 +107,7 @@ function showAuthScreen(needsSetup = false, message = '') {
 
 async function enterApp(user) {
     if (!user || user.is_anonymous) return showAuthScreen(false);
+    document.body.classList.remove('auth-screen');
     currentUserId = user.id;
     currentAccountEmail = user.email || '';
     const displayName = String(user.user_metadata?.username || user.user_metadata?.full_name || '').trim();
