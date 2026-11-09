@@ -224,15 +224,19 @@
         body.auth-screen > main {
             display: grid;
             width: 100%;
-            max-width: none;
+            max-width: 72rem;
             height: 100svh;
             min-height: 100svh;
             place-items: center;
             overflow: hidden;
-            padding: clamp(0.4rem, 1.8vh, 1.25rem) clamp(0.5rem, 2vw, 1rem);
+            padding: clamp(0.4rem, 1.8vh, 1.25rem) 0.75rem;
         }
-        body.auth-screen #view-auth { width: min(100%, 64rem); max-width: 64rem; max-height: 100%; margin: auto; padding: 0; }
+        body.auth-screen #view-auth { width: 100%; max-width: none; max-height: 100%; margin: auto; padding: 0; }
         body.auth-screen #view-auth > div { max-height: 100%; }
+
+        @media (min-width: 640px) {
+            body.auth-screen > main { padding-inline: 1rem; }
+        }
 
         @media (max-width: 639px) {
             body.auth-screen #view-auth aside { min-height: 150px; padding: 0.65rem 1rem; }
