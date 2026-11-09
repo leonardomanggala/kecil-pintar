@@ -148,6 +148,8 @@ function setAuthMode(mode) {
     document.getElementById('auth-confirm-password').required = registering;
     document.getElementById('auth-password').autocomplete = registering ? 'new-password' : 'current-password';
     document.getElementById('auth-submit').innerText = registering ? 'Buat Akun' : 'Masuk';
+    document.getElementById('auth-heading').innerText = registering ? 'Buat akun belajar' : 'Selamat datang kembali';
+    document.getElementById('auth-subheading').innerText = registering ? 'Daftar dengan email wali untuk mulai menyimpan progres belajarmu.' : 'Masuk untuk melanjutkan latihan dan melihat progresmu.';
     document.getElementById('auth-login-tab').className = `rounded-lg py-2.5 text-sm font-semibold ${!registering ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600'}`;
     document.getElementById('auth-register-tab').className = `rounded-lg py-2.5 text-sm font-semibold ${registering ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600'}`;
     setAuthMessage('');

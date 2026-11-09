@@ -265,18 +265,36 @@
     <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6">
 
         <!-- LOGIN / REGISTER: wajib masuk sebelum membuka materi dan latihan -->
-        <section id="view-auth" class="max-w-md mx-auto py-6 sm:py-12">
-            <div class="shadcn-card p-6 sm:p-8 space-y-6">
-                <div class="text-center space-y-2">
-                    <div class="w-14 h-14 mx-auto rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-200"><i data-lucide="graduation-cap" class="w-7 h-7"></i></div>
-                    <h1 class="text-2xl font-display font-bold text-slate-900">Mulai Belajar</h1>
-                    <p class="text-sm text-muted-foreground">Masuk atau buat akun untuk menyimpan progres latihanmu.</p>
-                </div>
-                <div class="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100">
-                    <button id="auth-login-tab" type="button" onclick="setAuthMode('login')" class="rounded-lg py-2.5 text-sm font-semibold bg-white text-indigo-700 shadow-sm">Masuk</button>
-                    <button id="auth-register-tab" type="button" onclick="setAuthMode('register')" class="rounded-lg py-2.5 text-sm font-semibold text-slate-600">Daftar</button>
-                </div>
-                <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+        <section id="view-auth" class="mx-auto max-w-5xl py-3 sm:py-8 lg:py-12">
+            <div class="grid min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-indigo-100/60 lg:grid-cols-[1.05fr_0.95fr]">
+                <aside class="relative isolate min-h-[250px] overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-5 text-white sm:min-h-[310px] sm:p-8 lg:min-h-[650px] lg:p-10">
+                    <div class="pointer-events-none absolute -left-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl"></div>
+                    <div class="pointer-events-none absolute bottom-12 right-0 h-48 w-48 rounded-full bg-fuchsia-300/20 blur-3xl"></div>
+                    <div class="relative z-10 flex items-center gap-2">
+                        <span class="grid h-10 w-10 place-items-center rounded-xl bg-white/15 ring-1 ring-white/25"><i data-lucide="graduation-cap" class="h-6 w-6"></i></span>
+                        <span class="font-display text-lg font-semibold tracking-wide">Siap TKA</span>
+                    </div>
+                    <div class="relative z-10 mt-6 max-w-[62%] sm:mt-8 sm:max-w-[58%] lg:mt-14 lg:max-w-[92%]">
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold ring-1 ring-white/20"><i data-lucide="sparkles" class="h-3.5 w-3.5 text-amber-300"></i>Materi TKA SD 2027</span>
+                        <h1 class="mt-3 font-display text-2xl font-semibold leading-tight sm:text-3xl lg:text-4xl">Belajar lebih siap, raih cita-cita!</h1>
+                        <p class="mt-2 max-w-md text-xs leading-5 text-indigo-100 sm:text-sm sm:leading-6">Latihan seru, materi terarah, dan pantau perkembangan belajarmu dalam satu tempat.</p>
+                    </div>
+                    <img src="data/assets/hero-students-3d.png" width="1536" height="1024" decoding="async" fetchpriority="high" alt="Dua siswa SD berprestasi membawa buku dan piala" class="pointer-events-none absolute -bottom-2 right-0 z-0 h-[76%] w-[54%] object-contain object-bottom drop-shadow-2xl sm:right-3 sm:h-[84%] sm:w-[48%] lg:bottom-0 lg:right-2 lg:h-[66%] lg:w-[86%]">
+                    <div class="absolute bottom-4 left-5 z-10 hidden items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs text-white/90 backdrop-blur-md sm:flex lg:bottom-8 lg:left-10">
+                        <i data-lucide="book-open-check" class="h-4 w-4 text-amber-300"></i><span>Belajar bertahap, makin percaya diri</span>
+                    </div>
+                </aside>
+                <div class="min-w-0 p-5 sm:p-8 lg:flex lg:flex-col lg:justify-center lg:p-10">
+                    <div class="mb-6 space-y-1.5">
+                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">Ruang belajarmu</p>
+                        <h2 id="auth-heading" class="font-display text-2xl font-semibold text-slate-900 sm:text-3xl">Selamat datang kembali</h2>
+                        <p id="auth-subheading" class="text-sm leading-6 text-slate-500">Masuk untuk melanjutkan latihan dan melihat progresmu.</p>
+                    </div>
+                    <div class="mb-5 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
+                        <button id="auth-login-tab" type="button" onclick="setAuthMode('login')" class="rounded-lg py-2.5 text-sm font-semibold bg-white text-indigo-700 shadow-sm">Masuk</button>
+                        <button id="auth-register-tab" type="button" onclick="setAuthMode('register')" class="rounded-lg py-2.5 text-sm font-semibold text-slate-600">Daftar</button>
+                    </div>
+                    <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
                     <div class="space-y-1.5">
                         <label for="auth-email" class="text-sm font-semibold text-slate-700">Email wali/orang tua</label>
                         <input id="auth-email" name="email" type="email" autocomplete="email" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="nama@email.com">
@@ -292,8 +310,10 @@
                     <p class="text-xs leading-5 text-slate-500">Untuk menjaga privasi anak, gunakan email wali/orang tua dan jangan masukkan nama lengkap atau data pribadi anak.</p>
                     <div id="auth-message" class="hidden rounded-xl border p-3 text-sm leading-5" role="status" aria-live="polite"></div>
                     <button id="auth-submit" type="submit" class="w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white py-3 font-display font-semibold shadow-md shadow-indigo-200 transition">Masuk</button>
-                </form>
-                <p id="auth-setup-notice" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Login dan pendaftaran memerlukan konfigurasi Supabase. Tambahkan SUPABASE_URL dan SUPABASE_ANON_KEY di Vercel, lalu deploy ulang.</p>
+                    </form>
+                    <p id="auth-setup-notice" class="mt-4 hidden rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Login dan pendaftaran memerlukan konfigurasi Supabase. Tambahkan SUPABASE_URL dan SUPABASE_ANON_KEY di Vercel, lalu deploy ulang.</p>
+                    <p class="mt-5 text-center text-xs leading-5 text-slate-400">Akun digunakan untuk menyimpan progres belajar dengan aman.</p>
+                </div>
             </div>
         </section>
 
