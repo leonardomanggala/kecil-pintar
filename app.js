@@ -36,6 +36,12 @@ let currentProgressStorageKey = null;
 let authMode = 'login';
 let activeReferenceSubject = 'indonesia';
 let activeReferenceKind = 'summary';
+let quizHistory = [];
+let quizHistoryOffset = 0;
+let quizHistoryTotal = 0;
+let quizHistoryLoading = false;
+let quizHistoryError = false;
+const quizHistoryPageSize = 10;
 const progressStorageKey = 'kecil-pintar-progress-v2';
 
 function escapeHtml(value) {
@@ -120,6 +126,7 @@ async function enterApp(user) {
     renderDashboard();
     renderReferences();
     switchView('dashboard');
+    void loadQuizHistory(true);
 }
 
 function setAuthMessage(message = '', kind = 'info') {
@@ -292,6 +299,86 @@ async function persistProgress() {
         partial_count: currentQuiz.partialCount, question_count: currentQuiz.questions.length, coins_earned: 50
     });
     if (attemptError) console.error('Gagal mencatat latihan:', attemptError.message);
+}
+
+function renderQuizHistory() {
+    const list = document.getElementById('quiz-history-list');
+    const count = document.getElementById('quiz-history-count');
+    const moreButton = document.getElementById('quiz-history-more');
+    if (!list || !count || !moreButton) return;
+    count.innerText = `${quizHistoryTotal} latihan`;
+    if (quizHistoryError && !quizHistory.length) {
+        list.innerHTML = '<p class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-5 text-rose-800" role="status">Riwayat belum dapat dimuat. Periksa koneksi, lalu coba lagi.</p>';
+    } else if (!quizHistory.length) {
+        list.innerHTML = `<div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center"><p class="font-semibold text-slate-700">Belum ada riwayat latihan</p><p class="mt-1 text-sm leading-5 text-slate-500">Selesaikan satu paket latihan. Nilai dan hasilnya akan tersimpan di sini.</p></div>`;
+    } else {
+        list.innerHTML = quizHistory.map(attempt => {
+            const subject = subjects.find(item => item.id === attempt.category_id)?.name || 'Mata pelajaran';
+            const date = attempt.created_at ? new Date(attempt.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' }) : 'Tanggal tidak tersedia';
+            const score = Number(attempt.score || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return `<article class="flex min-w-0 flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="min-w-0 flex-1">
+                    <h3 class="truncate font-display text-base font-semibold text-slate-800">${escapeHtml(subject)} · Paket ${escapeHtml(attempt.package_number)}</h3>
+                    <p class="mt-0.5 text-xs text-slate-500">${escapeHtml(date)}</p>
+                    <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
+                        <span class="text-emerald-700">${escapeHtml(attempt.correct_count)} benar</span>
+                        <span class="text-rose-700">${escapeHtml(attempt.incorrect_count)} salah</span>
+                        <span class="text-amber-700">${escapeHtml(attempt.partial_count)} parsial</span>
+                        <span class="text-slate-500">${escapeHtml(attempt.question_count)} soal</span>
+                    </div>
+                </div>
+                <div class="flex shrink-0 items-center justify-between gap-3 rounded-lg bg-indigo-50 px-3 py-2 sm:min-w-32 sm:flex-col sm:items-start sm:gap-0">
+                    <span class="text-xs font-semibold text-indigo-700">Nilai</span>
+                    <span class="font-display text-xl font-semibold text-indigo-800">${escapeHtml(score)}</span>
+                </div>
+            </article>`;
+        }).join('');
+    }
+    moreButton.classList.toggle('hidden', !quizHistoryError && (quizHistoryOffset >= quizHistoryTotal || quizHistoryTotal === 0));
+    moreButton.disabled = quizHistoryLoading;
+    moreButton.innerText = quizHistoryLoading ? 'Memuat…' : quizHistoryError ? 'Coba lagi' : 'Muat riwayat lainnya';
+}
+
+async function loadQuizHistory(reset = false) {
+    const list = document.getElementById('quiz-history-list');
+    const moreButton = document.getElementById('quiz-history-more');
+    if (!list || quizHistoryLoading) return;
+    if (reset) {
+        quizHistory = [];
+        quizHistoryOffset = 0;
+        quizHistoryTotal = 0;
+        quizHistoryError = false;
+    }
+    if (!supabaseClient || !currentUserId) {
+        list.innerHTML = '<p class="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Masuk ke akun untuk melihat riwayat latihan.</p>';
+        const count = document.getElementById('quiz-history-count');
+        if (count) count.innerText = '0 latihan';
+        if (moreButton) moreButton.classList.add('hidden');
+        return;
+    }
+    quizHistoryLoading = true;
+    if (!quizHistory.length) list.innerHTML = '<p class="rounded-xl bg-slate-50 p-4 text-sm text-slate-600" role="status">Memuat riwayat latihan…</p>';
+    if (moreButton) moreButton.classList.add('hidden');
+    try {
+        const from = quizHistoryOffset;
+        const to = from + quizHistoryPageSize - 1;
+        const { data, error, count } = await supabaseClient.from('quiz_attempts')
+            .select('id,category_id,package_number,score,correct_count,incorrect_count,partial_count,question_count,created_at', { count: 'exact' })
+            .eq('user_id', currentUserId)
+            .order('created_at', { ascending: false })
+            .range(from, to);
+        if (error) throw error;
+        quizHistory = reset ? (data || []) : [...quizHistory, ...(data || [])];
+        quizHistoryOffset += (data || []).length;
+        quizHistoryTotal = count ?? quizHistoryOffset;
+        quizHistoryError = false;
+    } catch (error) {
+        console.error('Gagal memuat riwayat latihan:', error.message);
+        quizHistoryError = true;
+    } finally {
+        quizHistoryLoading = false;
+        renderQuizHistory();
+    }
 }
 
 function switchView(viewName) {
@@ -735,7 +822,7 @@ function finishQuiz() {
     document.getElementById('result-unanswered').innerText = `${currentQuiz.unansweredCount} Belum dijawab`;
     document.getElementById('result-coins').innerHTML = `<i data-lucide="coins" class="w-5 h-5 fill-amber-400"></i> +50`;
     renderQuestionReview();
-    void persistProgress();
+    void persistProgress().then(() => loadQuizHistory(true)).catch(error => console.error('Gagal memperbarui riwayat latihan:', error));
     switchView('result');
 }
 
