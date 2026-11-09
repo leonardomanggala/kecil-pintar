@@ -27,7 +27,7 @@ let userState = createInitialUserState();
 let currentQuiz = {
     categoryId: null, packageId: null, packageNumber: null, questions: [], currentIndex: 0,
     points: 0, correctCount: 0, incorrectCount: 0, partialCount: 0, unansweredCount: 0, answeredCount: 0,
-    answered: false, selected: null, remainingSeconds: 75 * 60, timerInterval: null, finished: false
+    answered: false, selected: null, remainingSeconds: 75 * 60, timerInterval: null, timeExpired: false, finished: false
 };
 let supabaseClient = null;
 let currentUserId = null;
@@ -375,8 +375,9 @@ function startQuiz(packageId) {
         incorrectCount: 0, partialCount: 0, unansweredCount: 0, answeredCount: 0, answered: false,
         responses: Array(selectedPackage.questions.length).fill(null), skipped: Array(selectedPackage.questions.length).fill(false),
         selected: null, remainingSeconds: selectedPackage.durationMinutes * 60,
-        timerInterval: null, finished: false
+        timerInterval: null, timeExpired: false, finished: false
     };
+    document.getElementById('quiz-time-expired-notice').classList.add('hidden');
     const subject = subjects.find(item => item.id === selectedPackage.subject);
     document.getElementById('quiz-category-badge').innerText = `${subject.name} · Paket ${selectedPackage.package}`;
     switchView('quiz');
@@ -637,8 +638,9 @@ function startTimer() {
     updateTimerDisplay();
     currentQuiz.timerInterval = setInterval(() => {
         currentQuiz.remainingSeconds--;
+        if (currentQuiz.remainingSeconds <= 0) currentQuiz.remainingSeconds = 0;
         updateTimerDisplay();
-        if (currentQuiz.remainingSeconds <= 0) finishOnTimeout();
+        if (currentQuiz.remainingSeconds === 0) finishOnTimeout();
     }, 1000);
 }
 function updateTimerDisplay() {
@@ -647,8 +649,21 @@ function updateTimerDisplay() {
     document.getElementById('quiz-timer').innerText = `${mins}:${secs}`;
 }
 function finishOnTimeout() {
-    if (currentQuiz.finished) return;
-    calculateQuizResults();
+    if (currentQuiz.finished || currentQuiz.timeExpired) return;
+    currentQuiz.timeExpired = true;
+    currentQuiz.remainingSeconds = 0;
+    clearInterval(currentQuiz.timerInterval);
+    updateTimerDisplay();
+    const firstUnanswered = currentQuiz.responses.findIndex(response => response === null);
+    if (firstUnanswered === -1) {
+        calculateQuizResults();
+        return;
+    }
+    document.getElementById('quiz-time-expired-notice').classList.remove('hidden');
+    if (currentQuiz.responses[currentQuiz.currentIndex] !== null) {
+        currentQuiz.currentIndex = firstUnanswered;
+        renderQuestion();
+    }
 }
 
 function nextQuestion() {
